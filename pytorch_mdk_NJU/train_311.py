@@ -97,7 +97,8 @@ def train(args):
     
             # loss = lamb * d + rate + α*FLOP(w)
             # group lasso regulazation
-            w = image_comp.module.encoder.host_layer0[0][0].conv.weight.data + image_comp.module.encoder.chip_layer0[0][0].conv.weight.data + image_comp.module.encoder.host_layer1[0][0].conv.weight.data                                             
+            w = image_comp.module.encoder.host_layer0[0][0].conv.weight.data
+#             + image_comp.module.encoder.chip_layer0[0][0].conv.weight.data + image_comp.module.encoder.host_layer1[0][0].conv.weight.data                                             
             norm = torch.norm(w)
             D = norm * torch.rsqrt(dloss)
             Flop = norm * D
