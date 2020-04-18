@@ -66,7 +66,7 @@ def train(args):
     image_comp.train()    
     # Adam optimizer
     optimizer = torch.optim.Adam(image_comp.parameters(),lr=lr)
-    
+    print(image_comp)
     # MSE loss when metric is "PSNR"
     if METRIC == "MSSSIM":
         loss_func = torch_msssim.MS_SSIM(max_val=1).cuda()
