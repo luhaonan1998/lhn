@@ -23,7 +23,6 @@ import torch.nn.functional as F
 import gti.quantize as Q
 from gti.chip import spec
 
-from utilis.ops import GDN
 """Basic layers
 boolean tensors are uint8 before pytorch 1.2"""
 class Conv2d(nn.Conv2d):
@@ -203,12 +202,15 @@ class ConvBlock(nn.Module):
             act_bits = 10
         else:
             act_bits = 5
-        self.gdn = GDN(
-            channel_num = out_channels
+        self.relu = ReLU(
+            quant_params.quant_act,
+            0,
+            act_bits,
+            inplace=True
         )
 
     def set_status(self, qw, qa, fuse, cal=None):
-        self.gdn.quantize[...] = qa
+        self.relu.quantize[...] = qa
         self.conv.quantize[...] = qw
         self.fuse[...] = fuse
         self.conv.bias.requires_grad = fuse
@@ -219,13 +221,13 @@ class ConvBlock(nn.Module):
         x = self.conv(x)
         if self.use_bn and not self.fuse:
             x = self.bn(x)
-        x = self.gdn(x)
+        x = self.relu(x)
         if self.cal:
             #finds max (over epoch) of 99th percentile of each batch
             y = x.cpu().detach().numpy()
             temp = np.percentile(y, 99)
-            if temp > self.gdn.cap.item():
-                self.gdn.cap[...] = temp
+            if temp > self.relu.cap.item():
+                self.relu.cap[...] = temp
         return x
 
 class ReLUWrapper(nn.Module):
@@ -354,12 +356,12 @@ class ResBlock(nn.Sequential):
             if block2.use_bn and not block2.fuse:
                 x = block2.bn(x)
             x += identity
-            x = block2.gdn(x)
+            x = block2.relu(x)
             if block2.cal:
                 y = x.cpu().detach().numpy()
                 temp = np.percentile(y, 99)
-                if temp > block2.gdn.cap.item():
-                    block2.gdn.cap.data[...] = temp
+                if temp > block2.relu.cap.item():
+                    block2.relu.cap.data[...] = temp
         if self.pool:
             x = self[-1](x)
         return x
